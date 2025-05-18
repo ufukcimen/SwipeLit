@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "878086666612",
+    "project_id": "swipelit-37cc5",
+    "storage_bucket": "swipelit-37cc5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:878086666612:android:bb87e120a2cbcdb1fd1421",
+        "android_client_info": {
+          "package_name": "com.example.swipelit"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "878086666612-n9d5382ttad6fpe6qqk9fnclmdvsmn63.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBNi8VlXkV8Zu-RsBwFEl2hTFmi8rEl72A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "878086666612-n9d5382ttad6fpe6qqk9fnclmdvsmn63.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
