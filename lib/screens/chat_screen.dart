@@ -139,11 +139,15 @@ import 'package:flutter/material.dart';
 import '../utils/constants.dart';
 
 class Chat extends StatefulWidget {
+  final String chatRoomId;
+  final String recipientId;
   final String name;
   final String avatarUrl;
 
   const Chat({
     Key? key,
+    required this.chatRoomId,
+    required this.recipientId,
     required this.name,
     required this.avatarUrl,
   }) : super(key: key);
@@ -151,6 +155,7 @@ class Chat extends StatefulWidget {
   @override
   State<Chat> createState() => _ChatState();
 }
+
 
 class _ChatState extends State<Chat> {
   final List<Map<String, String>> messages = [
