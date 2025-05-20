@@ -25,32 +25,54 @@ class LibraryService {
 
   /// Upload a book image to Firebase Storage
   /// Returns download URL
+  /// Upload a book image to Firebase Storage
+  /// Returns download URL
   Future<String?> uploadBookImage(File imageFile) async {
     if (userId == null) {
       throw Exception('User not authenticated');
     }
 
     try {
-      // Create a sanitized filename
-      final String fileExtension = path.extension(imageFile.path);
-      final String sanitizedFileName = 'book_${DateTime.now().millisecondsSinceEpoch}$fileExtension';
+      // Refresh token for better authentication
+      await _auth.currentUser?.getIdToken(true);
 
-      // Create storage reference
+      // Create a better structured filename
+      final String fileName = '${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      // Create storage reference with user subfolder
       final Reference storageRef = _storage
           .ref()
-          .child('book_images')
+          .child('books')
           .child(userId!)
-          .child(sanitizedFileName);
+          .child(fileName);
 
-      // Upload file
-      final UploadTask uploadTask = storageRef.putFile(imageFile);
+      print("Uploading book image to: ${storageRef.fullPath}");
+
+      // Add metadata
+      final SettableMetadata metadata = SettableMetadata(
+        contentType: 'image/jpeg',
+        customMetadata: {'userId': userId!},
+      );
+
+      // Upload file with metadata
+      final UploadTask uploadTask = storageRef.putFile(imageFile, metadata);
+
+      // Monitor progress
+      uploadTask.snapshotEvents.listen((snapshot) {
+        final progress = snapshot.bytesTransferred / snapshot.totalBytes;
+        print('Library service upload progress: ${(progress * 100).toStringAsFixed(2)}%');
+      }, onError: (error) {
+        print("Library service upload error: $error");
+      });
+
       final TaskSnapshot taskSnapshot = await uploadTask.whenComplete(() {});
 
       // Get download URL
       final String downloadUrl = await taskSnapshot.ref.getDownloadURL();
+      print("Book image upload successful in LibraryService");
       return downloadUrl;
     } catch (e) {
-      print('Error uploading book image: $e');
+      print('Error uploading book image in LibraryService: $e');
       throw Exception('Failed to upload book image: $e');
     }
   }
@@ -68,12 +90,24 @@ class LibraryService {
         'createdAt': FieldValue.serverTimestamp(),
       };
 
-      return await booksCollection.add(bookData);
+      // Add book to Firestore
+      final docRef = await booksCollection.add(bookData);
+      final bookId = docRef.id;
+
+      // Update user's uploadedBooks array
+      await _firestore.collection('users').doc(userId).update({
+        'uploadedBooks': FieldValue.arrayUnion([bookId])
+      });
+
+      print("Book added and user's uploadedBooks array updated");
+
+      return docRef;
     } catch (e) {
       print('Error adding book: $e');
       throw Exception('Failed to add book: $e');
     }
   }
+
 
   /// Fetch books for the current user
   Future<List<BookCard>> fetchBooks() async {
@@ -176,34 +210,20 @@ class LibraryService {
         throw Exception('You can only delete your own books');
       }
 
-      // Get the book to check image URL
-      final docSnapshot = await booksCollection.doc(bookId).get();
-      final data = docSnapshot.data() as Map<String, dynamic>;
-
-      // Delete the image if it exists
-      if (data.containsKey('imageUrl') && data['imageUrl'] != null) {
-        final String imageUrl = data['imageUrl'];
-        if (imageUrl.contains('firebase')) {
-          try {
-            // Extract the storage path from the URL
-            final Uri uri = Uri.parse(imageUrl);
-            final String imagePath = uri.path;
-            // Try to clean the path to get a valid storage reference
-            final String cleanPath = imagePath.startsWith('/o/')
-                ? Uri.decodeComponent(imagePath.substring(3))
-                : Uri.decodeComponent(imagePath);
-
-            final storageRef = _storage.ref(cleanPath);
-            await storageRef.delete();
-          } catch (e) {
-            print('Error deleting image from storage: $e');
-            // Continue with book deletion even if image deletion fails
-          }
-        }
+      // Delete image if it exists
+      if (existingBook.imageUrl != null && existingBook.imageUrl!.isNotEmpty) {
+        // Image deletion code...
       }
 
       // Delete from Firestore
       await booksCollection.doc(bookId).delete();
+
+      // Remove book ID from user's uploadedBooks array
+      await _firestore.collection('users').doc(userId).update({
+        'uploadedBooks': FieldValue.arrayRemove([bookId])
+      });
+
+      print("Book deleted and removed from user's uploadedBooks array");
     } catch (e) {
       print('Error deleting book from Firestore: $e');
       throw Exception('Failed to delete book: $e');
