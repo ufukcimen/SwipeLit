@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/book_card.dart';
 
@@ -134,7 +135,13 @@ class BookLibraryNotifier extends StateNotifier<List<BookCard>> {
 // Provider definition
 final bookLibraryProvider = StateNotifierProvider<BookLibraryNotifier, List<BookCard>>((ref) {
   final firestore = FirebaseFirestore.instance;
-  final userId = 'current-user-id'; // Replace with actual user ID from auth
+  final userId = FirebaseAuth.instance.currentUser?.uid;
+
+  if (userId == null) {
+    print("Warning: No authenticated user found when initializing bookLibraryProvider");
+  } else {
+    print("Initializing bookLibraryProvider with user ID: $userId");
+  }
 
   return BookLibraryNotifier(firestore, userId);
 });
