@@ -1019,6 +1019,7 @@ class _EditUserInfoScreenState extends ConsumerState<EditUserInfoScreen> {
     );
   }}*/
 
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
@@ -1092,10 +1093,63 @@ class _EditUserInfoScreenState extends ConsumerState<EditUserInfoScreen> {
 
   final List<String> genderOptions = ["Male", "Female", "Other"];
 
+  Future<void> _testStorageAccess() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        print("Not authenticated");
+        return;
+      }
+
+      print("Testing Firebase Storage access...");
+
+      // Create a simple text file
+      final String testString = 'Test upload ${DateTime.now()}';
+
+      final testRef = FirebaseStorage.instance.ref()
+          .child('test_uploads')
+          .child('${user.uid}_${DateTime.now().millisecondsSinceEpoch}.txt');
+
+      // Use putString instead of putData
+      final uploadTask = testRef.putString(testString);
+
+      // Wait for upload completion
+      final snapshot = await uploadTask;
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+
+      print("Test upload successful! URL: $downloadUrl");
+
+      // Clean up - delete the test file
+      await testRef.delete();
+      print("Test file deleted successfully");
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Storage test successful!"),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+    } catch (e) {
+      print("Storage test failed: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Storage test failed: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   // Updated initState method with proper provider refresh
   @override
   void initState() {
     super.initState();
+
+    Future.delayed(Duration(seconds: 2), () {
+      _testStorageAccess();
+    });
 
     // Check if user is authenticated first
     final currentUser = _auth.currentUser;
@@ -1156,66 +1210,58 @@ class _EditUserInfoScreenState extends ConsumerState<EditUserInfoScreen> {
 
       setState(() => _isUploadingImage = true);
 
-      print("Starting image upload for user ID: ${user.uid}");
+      // Refresh authentication token
+      await user.getIdToken(true);
+      print("Authentication refreshed for user: ${user.uid}");
 
-      // Create a simpler reference path
-      final storageRef = FirebaseStorage.instance.ref().child('profile_images/${user.uid}.jpg');
+      // Create a structure with a subfolder for each user
+      final storageRef = FirebaseStorage.instance.ref()
+          .child('profile_images')
+          .child(user.uid)  // Create user-specific folder
+          .child('profile.jpg');
 
-      print("Attempting to upload to: ${storageRef.fullPath}");
+      print("Uploading to path: ${storageRef.fullPath}");
 
-      // Convert the file to bytes
-      final bytes = await _selectedImage!.readAsBytes();
-
-      // Set metadata with content type
-      final metadata = SettableMetadata(
-        contentType: 'image/jpeg',
-      );
-
-      // Start the upload task
-      final uploadTask = storageRef.putData(bytes, metadata);
+      // Use putFile directly
+      final uploadTask = storageRef.putFile(_selectedImage!);
 
       // Monitor upload progress
       uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
         final progress = snapshot.bytesTransferred / snapshot.totalBytes;
         print('Upload progress: ${(progress * 100).toStringAsFixed(2)}%');
       }, onError: (error) {
-        print("Upload error during streaming: $error");
+        print("Upload streaming error: $error");
       });
 
-      // Wait for upload to complete
-      await uploadTask;
-      print('Upload complete');
+      // Wait for upload completion
+      final snapshot = await uploadTask;
+      final downloadUrl = await snapshot.ref.getDownloadURL();
 
-      // Get download URL - wrapped in try-catch for better error handling
-      String downloadUrl;
-      try {
-        downloadUrl = await storageRef.getDownloadURL();
-        print("Download URL obtained: $downloadUrl");
-      } catch (urlError) {
-        print("Error getting download URL: $urlError");
-        throw urlError;
-      }
+      print("Upload successful! Download URL: $downloadUrl");
 
-      // Update photoUrl in Firestore
+      // Update Firestore with the URL
       await _firestore.collection('users').doc(user.uid).update({
         'photoUrl': downloadUrl,
       });
 
-      // Update local state to show the new profile picture immediately
+      // Update local state
       setState(() {
         _photoUrl = downloadUrl;
-        _selectedImage = null; // Clear selected image
+        _selectedImage = null;
       });
 
-      // Safe way to refresh the provider
+      // Refresh provider
       _safeRefreshProvider();
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Profile picture updated successfully!")),
       );
-
     } catch (e) {
       print("Error uploading image: $e");
+      if (e is FirebaseException) {
+        print("Firebase Error Code: ${e.code}");
+        print("Firebase Error Message: ${e.message}");
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error uploading image: $e")),
       );

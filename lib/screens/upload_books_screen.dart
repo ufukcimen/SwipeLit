@@ -192,25 +192,29 @@ class _UploadBookScreenState extends ConsumerState<UploadBookScreen> {
     });
 
     try {
-      // Get current user
+      // Get current user and refresh token
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) {
         throw Exception('User not authenticated');
       }
 
+      // Refresh token for better authentication
+      await currentUser.getIdToken(true);
+
       // Get owner name
       final ownerName = currentUser.displayName ?? 'Me';
 
-      // Create a sanitized filename to avoid storage issues
-      final String fileExtension = path.extension(_selectedImage!.path);
-      final String sanitizedFileName = 'book_${DateTime.now().millisecondsSinceEpoch}$fileExtension';
+      // Create a properly organized filename
+      final String fileName = '${currentUser.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-      // Upload image to Firebase Storage
+      // Create a properly structured reference path
       final Reference storageRef = FirebaseStorage.instance
           .ref()
-          .child('books') // Keep path simple and consistent
+          .child('books')
           .child(currentUser.uid)
-          .child(sanitizedFileName);
+          .child(fileName);
+
+      print("Uploading book to path: ${storageRef.fullPath}");
 
       // Add metadata for content type
       final SettableMetadata metadata = SettableMetadata(
@@ -221,12 +225,20 @@ class _UploadBookScreenState extends ConsumerState<UploadBookScreen> {
       // Create the upload task and monitor progress
       final UploadTask uploadTask = storageRef.putFile(_selectedImage!, metadata);
 
+      // Monitor progress for debugging
+      uploadTask.snapshotEvents.listen((snapshot) {
+        final progress = snapshot.bytesTransferred / snapshot.totalBytes;
+        print('Book upload progress: ${(progress * 100).toStringAsFixed(2)}%');
+      }, onError: (error) {
+        print("Upload error: $error");
+      });
+
       // Wait for the upload to complete
       final TaskSnapshot taskSnapshot = await uploadTask.whenComplete(() {});
 
       // Get download URL
       final String imageUrl = await taskSnapshot.ref.getDownloadURL();
-      print("Image uploaded: $imageUrl");
+      print("Book image uploaded: $imageUrl");
 
       // Create the book object
       final book = {
@@ -242,10 +254,27 @@ class _UploadBookScreenState extends ConsumerState<UploadBookScreen> {
 
       // Add book to Firestore
       final docRef = await FirebaseFirestore.instance.collection('books').add(book);
-      print("Book added with ID: ${docRef.id}");
+      final bookId = docRef.id;
+      print("Book added with ID: $bookId");
+
+      // Update user's uploadedBooks array in Firestore
+      final userRef = FirebaseFirestore.instance.collection('users').doc(currentUser.uid);
+
+      // Get current user data to check if uploadedBooks exists
+      final userData = await userRef.get();
+
+      if (userData.exists) {
+        // Use arrayUnion to add the book ID to the user's uploadedBooks array
+        await userRef.update({
+          'uploadedBooks': FieldValue.arrayUnion([bookId])
+        });
+
+        print("User's uploadedBooks array updated with new book ID");
+      } else {
+        print("User document not found - cannot update uploadedBooks");
+      }
 
       // Refresh the book library in the provider
-      // This is critical for updating the gallery screen!
       await ref.read(bookLibraryProvider.notifier).loadBooks();
 
       if (mounted) {
@@ -258,7 +287,6 @@ class _UploadBookScreenState extends ConsumerState<UploadBookScreen> {
           _selectedImage = null;
           _titleController.clear();
           _ageController.clear();
-          // Don't clear location - keep it for the next book
         });
 
         // Navigate back to gallery with refresh signal

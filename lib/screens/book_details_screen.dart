@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -111,25 +113,55 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
         _isLoading = true;
       });
 
-      // Generate a unique filename using timestamp
-      final fileName = 'book_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      // Get current user ID
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception("User not authenticated");
+      }
 
-      // Get reference to Firebase Storage
-      final storageRef = FirebaseStorage.instance.ref().child('book_images/$fileName');
+      // Refresh token to ensure latest authentication
+      await user.getIdToken(true);
+
+      // Generate a unique filename using timestamp and user ID
+      final fileName = '${user.uid}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      // Create a better path structure with user-specific folder
+      final storageRef = FirebaseStorage.instance.ref()
+          .child('books')
+          .child(user.uid)
+          .child(fileName);
+
+      print("Uploading book image to: ${storageRef.fullPath}");
+
+      // Add metadata
+      final metadata = SettableMetadata(
+        contentType: 'image/jpeg',
+        customMetadata: {'userId': user.uid},
+      );
 
       // Upload the file
-      final uploadTask = storageRef.putFile(_imageFile!);
+      final uploadTask = storageRef.putFile(_imageFile!, metadata);
+
+      // Monitor progress for debugging
+      uploadTask.snapshotEvents.listen((snapshot) {
+        final progress = snapshot.bytesTransferred / snapshot.totalBytes;
+        print('Book image upload progress: ${(progress * 100).toStringAsFixed(2)}%');
+      }, onError: (error) {
+        print("Upload error: $error");
+      });
 
       // Wait for the upload to complete
       final snapshot = await uploadTask.whenComplete(() {});
 
       // Get the download URL
       _newImageUrl = await snapshot.ref.getDownloadURL();
+      print("Book image uploaded successfully: $_newImageUrl");
 
       setState(() {
         _isLoading = false;
       });
     } catch (e) {
+      print("Error uploading book image: $e");
       setState(() {
         _isLoading = false;
       });
@@ -173,34 +205,32 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
         await _uploadImage();
       }
 
+      // Get the document ID to update
+      final String docId = widget.documentId ?? widget.book.id ?? '';
+      if (docId.isEmpty) {
+        throw Exception('Book ID is missing - cannot update book');
+      }
+
       // Create updated book
       final updatedBook = BookCard(
-        title: _titleController.text,
-        ownerName: _ownerController.text,
-        age: age,
-        location: _locationController.text,
-        imageUrl: _newImageUrl ?? widget.book.imageUrl,
-        // Ensure any other fields from original book are preserved
-        id: widget.book.id,
-        userId: widget.book.userId,
-        ownerId: widget.book.userId!,  
-        createdAt: widget.book.createdAt,
+          title: _titleController.text,
+          ownerName: _ownerController.text,
+          age: age,
+          location: _locationController.text,
+          imageUrl: _newImageUrl ?? widget.book.imageUrl,
+          // Ensure any other fields from original book are preserved
+          id: docId,
+          userId: widget.book.userId,
+          ownerId: widget.book.userId!,
+          createdAt: widget.book.createdAt,
+          category: widget.book.category // Make sure to include category
       );
 
-      // Update in provider
-      if (widget.documentId != null) {
-        // Use document ID if available (Firestore approach)
-        await ref.read(bookLibraryProvider.notifier).updateBookById(
-          widget.documentId!,
-          updatedBook,
-        );
-      } else {
-        // Fallback to index-based update (local storage approach)
-        await ref.read(bookLibraryProvider.notifier).updateBook(
-          widget.index,
-          updatedBook,
-        );
-      }
+      // Update in provider and Firestore
+      await ref.read(bookLibraryProvider.notifier).updateBookById(
+        docId,
+        updatedBook,
+      );
 
       if (mounted) {
         setState(() {
@@ -252,12 +282,30 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
     });
 
     try {
-      // Delete from provider (use document ID if available)
-      if (widget.documentId != null) {
-        await ref.read(bookLibraryProvider.notifier).deleteBookById(widget.documentId!);
-      } else {
-        await ref.read(bookLibraryProvider.notifier).deleteBook(widget.index);
+      // Get the document ID to delete
+      final String docId = widget.documentId ?? widget.book.id ?? '';
+      if (docId.isEmpty) {
+        throw Exception('Book ID is missing - cannot delete book');
       }
+
+      // Get current user
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Delete the book from Firestore
+      await ref.read(bookLibraryProvider.notifier).deleteBookById(docId);
+
+      // Update user's uploadedBooks array to remove this book ID
+      final userRef = FirebaseFirestore.instance.collection('users').doc(currentUser.uid);
+
+      // Use arrayRemove to remove the book ID from user's uploadedBooks array
+      await userRef.update({
+        'uploadedBooks': FieldValue.arrayRemove([docId])
+      });
+
+      print("Book ID removed from user's uploadedBooks array");
 
       if (mounted) {
         Navigator.pop(context); // Go back to gallery
