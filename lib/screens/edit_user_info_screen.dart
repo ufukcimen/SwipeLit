@@ -1092,7 +1092,7 @@ class _EditUserInfoScreenState extends ConsumerState<EditUserInfoScreen> {
   final TextEditingController _otherInterestController = TextEditingController();
 
   final List<String> genderOptions = ["Male", "Female", "Other"];
-
+/*
   Future<void> _testStorageAccess() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -1141,15 +1141,12 @@ class _EditUserInfoScreenState extends ConsumerState<EditUserInfoScreen> {
       );
     }
   }
-
+*/
   // Updated initState method with proper provider refresh
   @override
   void initState() {
     super.initState();
 
-    Future.delayed(Duration(seconds: 2), () {
-      _testStorageAccess();
-    });
 
     // Check if user is authenticated first
     final currentUser = _auth.currentUser;
