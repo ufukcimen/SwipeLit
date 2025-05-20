@@ -166,7 +166,7 @@ class _SignUpInterestScreenState extends ConsumerState<SignUpInterestScreen> {
                   if (selected.isNotEmpty) {
                     // Save to provider
                     ref.read(signupProvider.notifier).setInterests(selected.toList());
-                    Navigator.pushNamed(context, '/signupUpload');
+                    Navigator.pushNamed(context, '/locationPermission');
                   } else {
                     // Show message if no interests selected
                     ScaffoldMessenger.of(context).showSnackBar(
