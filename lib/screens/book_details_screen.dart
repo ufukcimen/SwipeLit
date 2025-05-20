@@ -183,6 +183,7 @@ class _BookDetailsScreenState extends ConsumerState<BookDetailsScreen> {
         // Ensure any other fields from original book are preserved
         id: widget.book.id,
         userId: widget.book.userId,
+        ownerId: widget.book.userId!,  
         createdAt: widget.book.createdAt,
       );
 

@@ -58,6 +58,9 @@ class SignupState {
       'interests': interests,
       'uploadedBooks': uploadedBooks,
       'location': location,
+      'likes': <String>[],
+      'dislikes': <String>[],
+      'superlikes': <String>[],
     };
   }
 }

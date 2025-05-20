@@ -8,6 +8,7 @@ class BookCard {
   final String location;
   final String? imageUrl;
   final String? userId; // User who owns this book
+  final String ownerId;  
   final DateTime? createdAt;
   final String category;
 
@@ -21,6 +22,7 @@ class BookCard {
     this.userId,
     this.createdAt,
     this.category = 'Uncategorized',
+    required this.ownerId,
   });
 
   // Create a copy of this book with some updated values
@@ -32,6 +34,7 @@ class BookCard {
     String? location,
     String? imageUrl,
     String? userId,
+    String? ownerId,
     DateTime? createdAt,
     String? category,
   }) {
@@ -43,6 +46,7 @@ class BookCard {
       location: location ?? this.location,
       imageUrl: imageUrl ?? this.imageUrl,
       userId: userId ?? this.userId,
+      ownerId:    ownerId    ?? this.ownerId,
       createdAt: createdAt ?? this.createdAt,
       category: category ?? this.category,
     );
@@ -76,6 +80,7 @@ class BookCard {
       location: map['location'] ?? '',
       imageUrl: map['imageUrl'],
       userId: map['userId'],
+      ownerId:   map['userId']    ?? '',
       category: map['category'] ?? 'Uncategorized',
       createdAt: (map['createdAt'] != null && map['createdAt'] is Timestamp)
           ? (map['createdAt'] as Timestamp).toDate()
