@@ -1,23 +1,45 @@
 import 'package:flutter/material.dart';
-import 'package:swipelit/utils/constants.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pain/utils/constants.dart';
+import 'package:pain/providers/sign_up_provider.dart';
 
-class SignUpAgeScreen extends StatefulWidget {
+class SignUpAgeScreen extends ConsumerStatefulWidget {
   const SignUpAgeScreen({super.key});
 
   @override
-  State<SignUpAgeScreen> createState() => _SignUpAgeScreenState();
+  ConsumerState<SignUpAgeScreen> createState() => _SignUpAgeScreenState();
 }
 
-class _SignUpAgeScreenState extends State<SignUpAgeScreen> {
+class _SignUpAgeScreenState extends ConsumerState<SignUpAgeScreen> {
   DateTime? selectedDate;
+
+  @override
+  void initState() {
+    super.initState();
+    final signupState = ref.read(signupProvider);
+    if (signupState.birthDate != null) {
+      selectedDate = signupState.birthDate;
+    }
+  }
 
   void _pickDate() async {
     final DateTime now = DateTime.now();
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime(now.year - 18),
+      initialDate: selectedDate ?? DateTime(now.year - 18),
       firstDate: DateTime(now.year - 100),
       lastDate: now,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (picked != null) {
@@ -38,8 +60,23 @@ class _SignUpAgeScreenState extends State<SignUpAgeScreen> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
 
+    // Get theme-aware colors
+    final backgroundColor = AppColors.getBackground(context);
+    final textColor = AppColors.getTextPrimary(context);
+    final textSecondaryColor = AppColors.getTextSecondary(context);
+    final cardColor = AppColors.getCardBackground(context);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    // Progress bar colors
+    final progressBgColor = isDarkMode
+        ? AppColors.primary.withOpacity(0.3)
+        : Colors.green.shade100;
+    final borderColor = isDarkMode
+        ? Colors.green.shade800
+        : Colors.green.shade200;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: backgroundColor,
       body: SafeArea(
         child: Padding(
           padding: AppPaddings.screen,
@@ -54,7 +91,7 @@ class _SignUpAgeScreenState extends State<SignUpAgeScreen> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary,),
+                      icon: Icon(Icons.arrow_back_ios_new, color: textColor),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ),
@@ -62,7 +99,7 @@ class _SignUpAgeScreenState extends State<SignUpAgeScreen> {
                     width: screenWidth * 0.5,
                     height: 10,
                     decoration: BoxDecoration(
-                      color: Colors.green.shade100,
+                      color: progressBgColor,
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: FractionallySizedBox(
@@ -70,7 +107,7 @@ class _SignUpAgeScreenState extends State<SignUpAgeScreen> {
                       widthFactor: 3 / 6,
                       child: Container(
                         decoration: BoxDecoration(
-                          color: Colors.green,
+                          color: AppColors.primary,
                           borderRadius: BorderRadius.circular(6),
                         ),
                       ),
@@ -81,14 +118,21 @@ class _SignUpAgeScreenState extends State<SignUpAgeScreen> {
 
               const SizedBox(height: 48),
 
-              const Text(
+              Text(
                 "How Old Are You?",
-                style: AppTextStyles.heading,
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
               ),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 "Please select your birth date",
-                style: TextStyle(fontSize: 16, color: Colors.black54),
+                style: TextStyle(
+                  fontSize: 16,
+                  color: textSecondaryColor,
+                ),
               ),
               const SizedBox(height: 40),
 
@@ -99,10 +143,10 @@ class _SignUpAgeScreenState extends State<SignUpAgeScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: cardColor,
                     borderRadius: BorderRadius.circular(36),
                     border: Border.all(
-                      color: Colors.green.shade200,
+                      color: borderColor,
                       width: 1.5,
                     ),
                   ),
@@ -113,7 +157,9 @@ class _SignUpAgeScreenState extends State<SignUpAgeScreen> {
                           : "Select your birthdate",
                       style: TextStyle(
                         fontSize: 18,
-                        color: selectedDate != null ? AppColors.textPrimary : Colors.grey,
+                        color: selectedDate != null
+                            ? textColor
+                            : textSecondaryColor,
                       ),
                     ),
                   ),
@@ -126,6 +172,8 @@ class _SignUpAgeScreenState extends State<SignUpAgeScreen> {
               GestureDetector(
                 onTap: () {
                   if (selectedDate != null) {
+                    // Save to provider
+                    ref.read(signupProvider.notifier).setBirthDate(selectedDate!);
                     Navigator.pushNamed(context, '/signupGender');
                   }
                 },
@@ -133,14 +181,18 @@ class _SignUpAgeScreenState extends State<SignUpAgeScreen> {
                   height: 64,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: selectedDate != null ? Colors.green : Colors.green.shade200,
+                    color: selectedDate != null
+                        ? AppColors.primary
+                        : (isDarkMode
+                        ? AppColors.primary.withOpacity(0.4)
+                        : Colors.green.shade200),
                     borderRadius: BorderRadius.circular(36),
                     boxShadow: [
                       if (selectedDate != null)
-                        const BoxShadow(
-                          color: Colors.black12,
+                        BoxShadow(
+                          color: isDarkMode ? Colors.black26 : Colors.black12,
                           blurRadius: 4,
-                          offset: Offset(0, 2),
+                          offset: const Offset(0, 2),
                         ),
                     ],
                   ),

@@ -1,22 +1,104 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/auth_service.dart';
 import '../utils/constants.dart';
+import '../models/userModel.dart';
 
-class ProfileScreen extends StatelessWidget {
-  final String profileImageUrl = 'https://i.imgur.com/BoN9kdC.png';
-
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  UserModel? currentUser;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      // Get current user ID
+      final String? uid = FirebaseAuth.instance.currentUser?.uid;
+
+      if (uid != null) {
+        // Fetch user data from Firestore
+        final DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .get();
+
+        if (userDoc.exists) {
+          setState(() {
+            currentUser = UserModel.fromMap(
+                userDoc.data() as Map<String, dynamic>,
+                uid
+            );
+            isLoading = false;
+          });
+        } else {
+          setState(() {
+            isLoading = false;
+          });
+        }
+      } else {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  // Calculate age based on birthDate
+  int calculateAge(DateTime? birthDate) {
+    if (birthDate == null) return 0;
+
+    final DateTime today = DateTime.now();
+    int age = today.year - birthDate.year;
+
+    if (today.month < birthDate.month ||
+        (today.month == birthDate.month && today.day < birthDate.day)) {
+      age--;
+    }
+
+    return age;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Theme-aware colors
+    final backgroundColor = AppColors.getBackground(context);
+    final textColor = AppColors.getTextPrimary(context);
+    final textSecondaryColor = AppColors.getTextSecondary(context);
+    final cardColor = AppColors.getCardBackground(context);
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: backgroundColor,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: 2,
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.green,
+        selectedItemColor: AppColors.primary,
         unselectedItemColor: Colors.grey,
         showSelectedLabels: false,
         showUnselectedLabels: false,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? Colors.black
+            : Colors.white,
         onTap: (index) {
           switch (index) {
             case 0:
@@ -37,20 +119,44 @@ class ProfileScreen extends StatelessWidget {
         ],
       ),
       body: SafeArea(
-        child: Column(
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
           children: [
             const SizedBox(height: 20),
-            const Icon(Icons.menu_book, color: Colors.green, size: 40),
+            Icon(Icons.menu_book, color: AppColors.primary, size: 40),
             const SizedBox(height: 20),
-            CircleAvatar(
+
+            // User Profile Photo
+            currentUser?.photoUrl != null && currentUser!.photoUrl!.isNotEmpty
+                ? CircleAvatar(
               radius: 60,
-              backgroundImage: NetworkImage(profileImageUrl),
+              backgroundImage: NetworkImage(currentUser!.photoUrl!),
+              backgroundColor: Colors.grey[300],
+              child: currentUser?.photoUrl == null
+                  ? Icon(Icons.person, size: 60, color: Colors.grey[600])
+                  : null,
+            )
+                : CircleAvatar(
+              radius: 60,
+              backgroundColor: Colors.grey[300],
+              child: Icon(Icons.person, size: 60, color: Colors.grey[600]),
             ),
+
             const SizedBox(height: 10),
-            const Text(
-              'Yağız, 21',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+
+            // User Name and Age
+            Text(
+              currentUser != null
+                  ? '${currentUser!.name}, ${calculateAge(currentUser!.birthDate)}'
+                  : 'User',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w600,
+                color: textColor,
+              ),
             ),
+
             const SizedBox(height: 40),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -72,6 +178,42 @@ class ProfileScreen extends StatelessWidget {
                 ),
               ],
             ),
+
+            const Spacer(),
+            Padding(
+              padding: AppPaddings.screen,
+              child: GestureDetector(
+                onTap: () async {
+                  // Call the sign out method
+                  await FirebaseService.signOut();
+                  // Navigate to login screen
+                  Navigator.pushReplacementNamed(context, '/login');
+                },
+                child: Container(
+                  height: 64,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(36),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.black26
+                            : Colors.black12,
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  alignment: Alignment.center,
+                  child: const Text(
+                    "Log Out",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -94,6 +236,13 @@ class _ProfileButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Theme-aware colors
+    final textSecondaryColor = AppColors.getTextSecondary(context);
+    final cardColor = AppColors.getCardBackground(context);
+    final iconColor = Theme.of(context).brightness == Brightness.dark
+        ? Colors.grey[300]
+        : Colors.grey[800];
+
     return GestureDetector(
       onTap: onTap,
       child: Column(
@@ -103,17 +252,19 @@ class _ProfileButton extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.all(18),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
+                decoration: BoxDecoration(
+                  color: cardColor,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
                       blurRadius: 6,
-                      color: Colors.black12,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.black26
+                          : Colors.black12,
                     ),
                   ],
                 ),
-                child: Icon(icon, color: Colors.grey[800]),
+                child: Icon(icon, color: iconColor),
               ),
               if (hasNotificationDot)
                 const Positioned(
@@ -130,7 +281,10 @@ class _ProfileButton extends StatelessWidget {
           Text(
             label,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
+            style: TextStyle(
+              fontSize: 12,
+              color: textSecondaryColor,
+            ),
           ),
         ],
       ),

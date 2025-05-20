@@ -49,18 +49,27 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Get theme-aware colors
+    final backgroundColor = AppColors.getBackground(context);
+    final textColor = AppColors.getTextPrimary(context);
+    final textSecondaryColor = AppColors.getTextSecondary(context);
+    final cardColor = AppColors.getCardBackground(context);
+    final dividerColor = Theme.of(context).brightness == Brightness.dark
+        ? Colors.grey[800]
+        : Colors.black12;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: backgroundColor,
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        backgroundColor: AppColors.background,
+        backgroundColor: backgroundColor,
         elevation: 0,
-        title: const Text(
+        title: Text(
           'Chats',
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+            color: textColor,
           ),
         ),
         centerTitle: true,
@@ -68,8 +77,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
       body: ListView.separated(
         padding: const EdgeInsets.symmetric(vertical: 8),
         itemCount: chats.length,
-        separatorBuilder: (context, index) => const Divider(
-          color: Colors.black12,
+        separatorBuilder: (context, index) => Divider(
+          color: dividerColor,
           indent: 20,
           endIndent: 20,
         ),
@@ -87,12 +96,18 @@ class _ChatListScreenState extends State<ChatListScreen> {
             onDismissed: (_) {
               setState(() => chats.removeAt(index));
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Chat deleted')),
+                SnackBar(
+                  content: Text('Chat deleted'),
+                  backgroundColor: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey[800]
+                      : null,
+                ),
               );
             },
             child: Card(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               elevation: 2,
+              color: cardColor,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -104,12 +119,16 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 ),
                 title: Text(
                   chat['name']!,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
                 ),
                 subtitle: Text(
                   chat['message']!,
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
+                  style: TextStyle(color: textSecondaryColor),
                 ),
                 onTap: () {
                   Navigator.push(
@@ -130,10 +149,13 @@ class _ChatListScreenState extends State<ChatListScreen> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: 1,
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.green,
+        selectedItemColor: AppColors.primary,
         unselectedItemColor: Colors.grey,
         showSelectedLabels: false,
         showUnselectedLabels: false,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? Colors.black
+            : Colors.white,
         onTap: _navigateTo,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Home'),

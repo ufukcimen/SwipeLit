@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import '../models/book_card.dart';
-import 'package:swipelit/utils/constants.dart';
+import 'package:pain/utils/constants.dart';
 
 class BookDiscoveryScreen extends StatefulWidget {
   const BookDiscoveryScreen({super.key});
@@ -41,20 +41,26 @@ class _BookDiscoveryScreenState extends State<BookDiscoveryScreen> {
   void _openFilterBottomSheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.getCardBackground(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) => StatefulBuilder(
         builder: (context, setSheetState) {
+          final textColor = AppColors.getTextPrimary(context);
+
           return Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   "Filter by Category",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Wrap(
@@ -69,14 +75,20 @@ class _BookDiscoveryScreenState extends State<BookDiscoveryScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                         decoration: BoxDecoration(
-                          color: isSelected ? Colors.green : Colors.white,
+                          color: isSelected ? AppColors.primary : AppColors.getCardBackground(context),
                           borderRadius: BorderRadius.circular(36),
-                          border: Border.all(color: isSelected ? Colors.green : Colors.grey.shade300),
+                          border: Border.all(
+                            color: isSelected
+                                ? AppColors.primary
+                                : Theme.of(context).brightness == Brightness.dark
+                                ? Colors.grey[700]!
+                                : Colors.grey[300]!,
+                          ),
                         ),
                         child: Text(
                           cat["name"],
                           style: TextStyle(
-                            color: isSelected ? Colors.white : AppColors.textPrimary,
+                            color: isSelected ? Colors.white : textColor,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -106,7 +118,7 @@ class _BookDiscoveryScreenState extends State<BookDiscoveryScreen> {
                     ),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
+                        backgroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                       ),
@@ -127,8 +139,13 @@ class _BookDiscoveryScreenState extends State<BookDiscoveryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Get theme-aware colors
+    final backgroundColor = AppColors.getBackground(context);
+    final textColor = AppColors.getTextPrimary(context);
+    final cardColor = AppColors.getCardBackground(context);
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: backgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -136,18 +153,21 @@ class _BookDiscoveryScreenState extends State<BookDiscoveryScreen> {
         leading: const SizedBox(),
         title: Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.menu_book_rounded, color: Colors.green),
-            SizedBox(width: 6),
+          children: [
+            Icon(Icons.menu_book_rounded, color: AppColors.primary),
+            const SizedBox(width: 6),
             Text(
               "SwipeLit",
-              style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                  color: textColor,
+                  fontWeight: FontWeight.bold
+              ),
             ),
           ],
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.filter_alt, color: Colors.green),
+            icon: Icon(Icons.filter_alt, color: AppColors.primary),
             onPressed: _openFilterBottomSheet,
           ),
         ],
@@ -253,7 +273,7 @@ class _BookDiscoveryScreenState extends State<BookDiscoveryScreen> {
             children: [
               CircleAvatar(
                 radius: 30,
-                backgroundColor: Colors.white,
+                backgroundColor: cardColor,
                 child: IconButton(
                   icon: const Icon(Icons.close, color: Colors.red, size: 28),
                   onPressed: () => controller.swipe(CardSwiperDirection.left),
@@ -283,10 +303,13 @@ class _BookDiscoveryScreenState extends State<BookDiscoveryScreen> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: 0,
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.green,
+        selectedItemColor: AppColors.primary,
         unselectedItemColor: Colors.grey,
         showSelectedLabels: false,
         showUnselectedLabels: false,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? Colors.black
+            : Colors.white,
         onTap: _onNavTapped,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: ''),

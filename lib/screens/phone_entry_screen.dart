@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'otp_verification_screen.dart';
-import 'package:swipelit/utils/constants.dart';
+import 'package:pain/utils/constants.dart';
 
 // 🌍 Country data model
 class CountryData {
@@ -46,13 +46,17 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
   void _openCountryPicker() {
     showModalBottomSheet(
       context: context,
+      backgroundColor: AppColors.getCardBackground(context),
       builder: (_) => ListView.builder(
         itemCount: countries.length,
         itemBuilder: (_, index) {
           final country = countries[index];
           return ListTile(
             leading: Text(country.flag, style: const TextStyle(fontSize: 24)),
-            title: Text("${country.name} (${country.code})"),
+            title: Text(
+              "${country.name} (${country.code})",
+              style: TextStyle(color: AppColors.getTextPrimary(context)),
+            ),
             onTap: () {
               setState(() => selectedCountry = country);
               Navigator.pop(context);
@@ -94,8 +98,16 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Get theme-aware colors
+    final backgroundColor = AppColors.getBackground(context);
+    final textColor = AppColors.getTextPrimary(context);
+    final textSecondaryColor = AppColors.getTextSecondary(context);
+    final cardColor = AppColors.getCardBackground(context);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDarkMode ? Colors.grey[700] : Colors.grey[300];
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: backgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -103,16 +115,20 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
             Align(
               alignment: Alignment.centerLeft,
               child: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary),
+                icon: Icon(Icons.arrow_back_ios_new, color: textColor),
                 onPressed: () => Navigator.pop(context),
               ),
             ),
             const SizedBox(height: 24),
 
-            const Center(
+            Center(
               child: Text(
                 "My number is",
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
               ),
             ),
 
@@ -126,9 +142,9 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: cardColor,
                       borderRadius: BorderRadius.circular(32),
-                      border: Border.all(color: Colors.grey.shade300),
+                      border: Border.all(color: borderColor!),
                     ),
                     child: Row(
                       children: [
@@ -140,28 +156,33 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
                               const SizedBox(width: 6),
                               Text(
                                 selectedCountry.code,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w600,
+                                  color: textColor,
                                 ),
                               ),
-                              const Icon(Icons.arrow_drop_down),
+                              Icon(Icons.arrow_drop_down, color: textColor),
                             ],
                           ),
                         ),
                         const SizedBox(width: 12),
-                        const VerticalDivider(width: 1, thickness: 1),
+                        VerticalDivider(
+                          width: 1,
+                          thickness: 1,
+                          color: borderColor,
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: TextField(
                             controller: phoneController,
                             keyboardType: TextInputType.phone,
-                            decoration: const InputDecoration(
+                            style: TextStyle(fontSize: 18, color: textColor),
+                            decoration: InputDecoration(
                               border: InputBorder.none,
                               hintText: "Enter your phone number",
-                              hintStyle: TextStyle(color: Colors.grey),
+                              hintStyle: TextStyle(color: textSecondaryColor),
                             ),
-                            style: const TextStyle(fontSize: 18),
                           ),
                         ),
                       ],
@@ -179,11 +200,11 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
                     child: Container(
                       height: 64,
                       decoration: BoxDecoration(
-                        color: Colors.green,
+                        color: AppColors.primary,
                         borderRadius: BorderRadius.circular(36),
-                        boxShadow: const [
+                        boxShadow: [
                           BoxShadow(
-                            color: Colors.black12,
+                            color: isDarkMode ? Colors.black26 : Colors.black12,
                             blurRadius: 4,
                             offset: Offset(0, 2),
                           ),

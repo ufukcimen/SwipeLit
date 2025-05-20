@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:swipelit/utils/constants.dart';
+import 'package:pain/utils/constants.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -22,21 +22,25 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: AppColors.background,
+
+    final backgroundColor = AppColors.getBackground(context);
+    final textColor = AppColors.getTextPrimary(context);
+
+    return Scaffold(
+      backgroundColor: backgroundColor,
       // Light mint green
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.menu_book_rounded, size: 80, color: Colors.green),
+            Icon(Icons.menu_book_rounded, size: 80, color: AppColors.primary),
             SizedBox(height: 12),
             Text(
               "SwipeLit",
               style: TextStyle(
                 fontSize: 50,
                 fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                color: textColor,
               ),
             ),
           ],

@@ -1,22 +1,57 @@
 import 'package:flutter/material.dart';
-import 'package:swipelit/utils/constants.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pain/utils/constants.dart';
+import 'package:pain/providers/sign_up_provider.dart';
 
-class SignUpNameScreen extends StatefulWidget {
+class SignUpNameScreen extends ConsumerStatefulWidget {
   const SignUpNameScreen({super.key});
 
   @override
-  State<SignUpNameScreen> createState() => _SignUpNameScreenState();
+  ConsumerState<SignUpNameScreen> createState() => _SignUpNameScreenState();
 }
 
-class _SignUpNameScreenState extends State<SignUpNameScreen> {
+class _SignUpNameScreenState extends ConsumerState<SignUpNameScreen> {
   final TextEditingController nameController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fill if returning to this screen
+    final signupState = ref.read(signupProvider);
+    if (signupState.name != null) {
+      nameController.text = signupState.name!;
+    }
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
 
+    // Get theme-aware colors
+    final backgroundColor = AppColors.getBackground(context);
+    final textColor = AppColors.getTextPrimary(context);
+    final textSecondaryColor = AppColors.getTextSecondary(context);
+    final cardColor = AppColors.getCardBackground(context);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    // Progress bar colors
+    final progressBgColor = isDarkMode
+        ? AppColors.primary.withOpacity(0.3)
+        : Colors.green.shade100;
+
+    // Input field colors
+    final inputBorderColor = isDarkMode
+        ? Colors.grey[700]
+        : Colors.green.shade200;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: backgroundColor,
       body: SafeArea(
         child: Padding(
           padding: AppPaddings.screen,
@@ -31,7 +66,7 @@ class _SignUpNameScreenState extends State<SignUpNameScreen> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary,),
+                      icon: Icon(Icons.arrow_back_ios_new, color: textColor),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ),
@@ -40,14 +75,14 @@ class _SignUpNameScreenState extends State<SignUpNameScreen> {
                     height: 10,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(6),
-                      color: Colors.green.shade100,
+                      color: progressBgColor,
                     ),
                     child: FractionallySizedBox(
                       alignment: Alignment.centerLeft,
                       widthFactor: 1 / 6, // 1st step
                       child: Container(
                         decoration: BoxDecoration(
-                          color: Colors.green,
+                          color: AppColors.primary,
                           borderRadius: BorderRadius.circular(6),
                         ),
                       ),
@@ -58,16 +93,16 @@ class _SignUpNameScreenState extends State<SignUpNameScreen> {
 
               const SizedBox(height: 48),
 
-              const Text(
-                "What’s Your Name?",
+              Text(
+                "What's Your Name?",
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: AppColors.textPrimary,),
+                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: textColor),
               ),
               const SizedBox(height: 12),
-              const Text(
-                "Let’s Get to Know Each Other",
+              Text(
+                "Let's Get to Know Each Other",
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.black54),
+                style: TextStyle(fontSize: 16, color: textSecondaryColor),
               ),
 
               const SizedBox(height: 40),
@@ -76,22 +111,24 @@ class _SignUpNameScreenState extends State<SignUpNameScreen> {
                 controller: nameController,
                 textCapitalization: TextCapitalization.words,
                 textAlign: TextAlign.center,
+                style: TextStyle(color: textColor),
                 decoration: InputDecoration(
                   hintText: "Enter your name",
+                  hintStyle: TextStyle(color: textSecondaryColor),
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: cardColor,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(36),
-                    borderSide: BorderSide(color: Colors.green.shade200),
+                    borderSide: BorderSide(color: inputBorderColor!),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(36),
-                    borderSide: BorderSide(color: Colors.green.shade200),
+                    borderSide: BorderSide(color: inputBorderColor),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(36),
-                    borderSide: const BorderSide(color: Colors.green, width: 2),
+                    borderSide: BorderSide(color: AppColors.primary, width: 2),
                   ),
                 ),
               ),
@@ -104,13 +141,25 @@ class _SignUpNameScreenState extends State<SignUpNameScreen> {
                   final nameRegex = RegExp(r'^[a-zA-Z\s]+$');
 
                   if (name.isNotEmpty && nameRegex.hasMatch(name)) {
+                    // Save name to provider
+                    ref.read(signupProvider.notifier).setName(name);
                     Navigator.pushNamed(context, '/signupEmail');
                   } else {
                     showDialog(
                       context: context,
-                      builder: (_) => const AlertDialog(
-                        title: Text("Invalid Name"),
-                        content: Text("Name should contain only letters."),
+                      builder: (_) => AlertDialog(
+                        backgroundColor: cardColor,
+                        title: Text("Invalid Name", style: TextStyle(color: textColor)),
+                        content: Text(
+                          "Name should contain only letters.",
+                          style: TextStyle(color: textColor),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text("OK", style: TextStyle(color: AppColors.primary)),
+                          ),
+                        ],
                       ),
                     );
                   }
@@ -119,13 +168,13 @@ class _SignUpNameScreenState extends State<SignUpNameScreen> {
                   height: 64,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: Colors.green,
+                    color: AppColors.primary,
                     borderRadius: BorderRadius.circular(36),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black12,
+                        color: isDarkMode ? Colors.black26 : Colors.black12,
                         blurRadius: 4,
-                        offset: Offset(0, 2),
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
